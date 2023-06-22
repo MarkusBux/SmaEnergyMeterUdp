@@ -1,10 +1,8 @@
 ﻿// See https://aka.ms/new-console-template for more information
-using System.ComponentModel;
+using SMA;
+
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.Intrinsics.X86;
-using System.Text;
-using SMA;
 
 
 int port = 9522;
@@ -13,7 +11,7 @@ string address = "239.12.255.254";
 
 
 
-
+# region sample data
 var bytes = (new byte[]
 {
     83,77,65, // SMA
@@ -28,7 +26,7 @@ var bytes = (new byte[]
     // Obis Block (2 bytes measured type/channel & 2 bytes type (counter = 8, actual = 4, version = 0)
     // actual has 4 byte of data
     // counter has 8 byte of data
-    0,1,4,0, 
+    0,1,4,0,
     0,0,0,74,
 
     0,1,8,0,
@@ -66,22 +64,25 @@ var bytes = (new byte[]
 
     0,13,4,0,0,0,0,4,0,14,4,0,0,0,195,87,0,21,4,0,0,0,53,205,0,21,8,0,0,0,0,0,98,221,230,216,0,22,4,0,0,0,0,0,0,22,8,0,0,0,0,0,221,242,234,128,0,23,4,0,0,0,0,155,0,23,8,0,0,0,0,0,19,224,36,96,0,24,4,0,0,0,0,0,0,24,8,0,0,0,0,0,121,195,252,152,0,29,4,0,0,0,53,206,0,29,8,0,0,0,0,0,135,217,66,152,0,30,4,0,0,0,0,0,0,30,8,0,0,0,0,0,244,99,68,24,0,31,4,0,0,0,22,109,0,32,4,0,0,3,174,139,0,33,4,0,0,0,3,232,0,41,4,0,0,0,0,0,0,41,8,0,0,0,0,0,124,143,74,64,0,42,4,0,0,0,105,71,0,42,8,0,0,0,0,0,164,3,178,120,0,43,4,0,0,0,74,218,0,43,8,0,0,0,0,0,30,77,157,216,0,44,4,0,0,0,0,0,0,44,8,0,0,0,0,0,53,143,79,160,0,49,4,0,0,0,0,0,0,49,8,0,0,0,0,0,135,231,9,120,0,50,4,0,0,0,129,45,0,50,8,0,0,0,0,0,171,25,51,8,0,51,4,0,0,0,53,164,0,52,4,0,0,3,180,13,0,53,4,0,0,0,3,47,0,61,4,0,0,0,51,196,0,61,8,0,0,0,0,0,27,60,229,104,0,62,4,0,0,0,0,0,0,62,8,0,0,0,0,0,119,121,216,24,0,63,4,0,0,0,6,113,0,63,8,0,0,0,0,0,24,25,112,64,0,64,4,0,0,0,0,0,0,64,8,0,0,0,0,0,9,154,197,240,0,69,4,0,0,0,52,42,0,69,8,0,0,0,0,0,33,202,28,232,0,70,4,0,0,0,0,0,0,70,8,0,0,0,0,0,123,47,0,160,0,71,4,0,0,0,22,69,0,72,4,0,0,3,162,104,0,73,4,0,0,0,3,224,144,0,0,0,2,12,5,82,0,0,0,0
 }).AsSpan();
-
+#endregion
 
 
 
 IPAddress mcastAddress = IPAddress.Parse(address);
 
-UdpClient udpClient = new(9522, AddressFamily.InterNetwork);
-udpClient.JoinMulticastGroup(mcastAddress);
-IPEndPoint endpoint = new (IPAddress.Any, 0);
+UdpClient udpClient = new(port, AddressFamily.InterNetwork);
+udpClient.JoinMulticastGroup(mcastAddress, new IPAddress(new byte[] { 192, 168, 178, 15 }));
+IPEndPoint endpoint = new(IPAddress.Any, 0);
+
+var baseFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
 
-int counter = 0;
+Console.WriteLine("listening...");
 while (true)
 {
-    var file = $"/Users/mbux/Downloads/{DateTime.Now:yyyy-MM-dd}.txt";
-    counter++;
+    var fileName = $"{DateTime.Now:yyyy-MM-dd}.csv";
+    var file = Path.Combine(baseFolder, fileName);
+
     var receiveBytes = udpClient.Receive(ref endpoint);
     if (receiveBytes.Length != 608) continue;
     var telegram = new EnergyMeterTelegram(receiveBytes);
@@ -126,7 +127,8 @@ while (true)
 
     Console.Write(consoleData);
 
-    if (!File.Exists(file)) {
+    if (!File.Exists(file))
+    {
         File.WriteAllText(file, "Time;Consume;Sell;L1V;L2V;L3V\n");
     }
 
